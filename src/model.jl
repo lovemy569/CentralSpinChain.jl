@@ -1,3 +1,9 @@
+using CentralSpinChain
+using HDF5
+using Plots
+using Dates
+using FileIO
+
 """
 Creates a function to define the initial state of the spin chain
 
@@ -333,6 +339,87 @@ function create_plots(t_array, Sz_array, Sy_array, Sx_array, CSz_array, CSz, Ent
 end
 
 """
+Save simulation results
+
+Parameters:
+- folder: Path to the folder where data will be saved
+- t_array: Array of time values
+- Sz_array: Array of Sz expectation values
+- Sy_array: Array of Sy expectation values
+- Sx_array: Array of Sx expectation values
+- Entropy_array: Array of entanglement entropy values
+- CSz_array: Array of central spin Sz values
+- CSz: Central spin Sz values
+- parameters: Dictionary containing the simulation parameters
+"""
+function save_simulation_results(folder, t_array, Sz_array, Sy_array, Sx_array, Entropy_array, CSz_array, CSz, parameters)
+    # Create folder if it doesn't exist
+    mkpath(folder)
+
+    # Save data to HDF5
+    h5file = joinpath(folder, "simulation_results.h5")
+    h5open(h5file, "w") do file
+        write(file, "t_array", t_array)
+        write(file, "Sz_array", Sz_array)
+        write(file, "Sy_array", Sy_array)
+        write(file, "Sx_array", Sx_array)
+        write(file, "Entropy_array", Entropy_array)
+        write(file, "CSz_array", CSz_array)
+        write(file, "CSz", CSz)
+    end
+
+    # Save parameters
+    open(joinpath(folder, "parameters.txt"), "w") do io
+        for (key, value) in parameters
+            println(io, "$key = $value")
+        end
+    end
+
+    # Create and save plots
+    spin_plot = plot(
+        t_array, Sz_array, 
+        label=L"$\langle S_z \rangle$", 
+        legend=:best, 
+        color=:blue, 
+        line=(:solid, 1.5), 
+        xlabel=L"$t$", 
+        ylabel="", 
+        title="Central Spin"
+    )
+    plot!(spin_plot, t_array, Sy_array, label=L"$\langle S_y \rangle$", legend=:best, color=:green, line=(:dash, 1.5))
+    plot!(spin_plot, t_array, Sx_array, label=L"$\langle S_x \rangle$", legend=:best, color=:red, line=(:dot, 1.5))
+    savefig(joinpath(folder, "spin_plot.png"))
+
+    imbalance = sum(CSz_array, dims=2) ./ (sum(CSz ./ 2 .+ 0.5, dims=2))
+    imbalance_plot = plot(
+        t_array, imbalance, 
+        label=L"$I=(S_{z,\uparrow}^{e}-S_{z,\uparrow}^{o})/(S_{z,\uparrow}^{o}+S_{z,\uparrow}^{e})$", 
+        legend=:best, 
+        color=:blue, 
+        line=(:solid, 1.5), 
+        xlabel=L"$t$", 
+        ylabel="", 
+        title="Imbalance"
+    )
+    savefig(joinpath(folder, "imbalance_plot.png"))
+
+    entropy_plot = plot(
+        t_array, Entropy_array, 
+        label=L"$S_{central}=-\sum_np_n\log p_n$", 
+        legend=:best, 
+        color=:blue, 
+        line=(:solid, 1.5), 
+        xlabel=L"$t$", 
+        ylabel="", 
+        title="Entropy"
+    )
+    savefig(joinpath(folder, "entropy_plot.png"))
+
+    combined_plot = plot(spin_plot, imbalance_plot, entropy_plot, layout=(1, 3), size=(1080, 320))
+    savefig(joinpath(folder, "combined_plot.png"))
+end
+
+"""
 Run simulation
 
 Parameters:
@@ -373,7 +460,36 @@ function run_simulation(N, Jz, Jy, Jx, Cz, Cy, Cx, F, W, gamma, tau, ttotal, cen
 
     # Plot results
     create_plots(t_array, Sz_array, Sy_array, Sx_array, CSz_array, CSz, Entropy_array)
+
+    # Save results
+    parameters = OrderedDict(
+        "N" => N,
+        "Jz" => Jz,
+        "Jy" => Jy,
+        "Jx" => Jx,
+        "Cz" => Cz,
+        "Cy" => Cy,
+        "Cx" => Cx,
+        "F" => F,
+        "W" => W,
+        "gamma" => gamma,
+        "α" => α,
+        "tau" => tau,
+        "ttotal" => ttotal,
+        "center_spin_initial_state" => center_spin_initial_state,
+        "chain_initial_state" => chain_initial_state,
+        "specified_sites" => specified_sites,
+        "dynamic_period" => dynamic_period,
+        "center_spin_period" => center_spin_period,
+        "periodic" => periodic
+    )
+
+    # Create timestamp folder
+    timestamp = Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
+    folder = joinpath("data", timestamp)
+    mkpath(folder)
+
+    # Save simulation results
+    save_simulation_results(folder, t_array, Sz_array, Sy_array, Sx_array, Entropy_array, CSz_array, CSz, parameters)
 end
-
-
 

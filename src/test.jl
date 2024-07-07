@@ -17,16 +17,18 @@ tau = 0.05  # 时间步长
 ttotal = 5.00  # 总时间
 
 # 初始链状态和中心自旋状态
-center_spin_initial_state = "Up"
-chain_initial_state = "Néel_state"  # 可选择 "Néel_state", "all_up", "all_dn", "all_x+", "all_x-"
+center_spin_initial_state = "X+"  # 可选择 "Up", "Dn", "X+", "X-"
+chain_initial_state = "all_up"  # 可选择 "Néel_state", "all_up", "all_dn", "all_x+", "all_x-"
 
 # 动态耦合参数
 specified_sites = [(2, 3)]  # 指定site对,example: specified_sites = [(2, 1),(2, 3),(4, 3)]
-dynamic_period = 0.1  # 动态耦合周期(设置为0取消floquet)
-center_spin_period = 0.1  # 中心自旋的动态耦合周期(设置为0取消floquet)
+dynamic_period = 1.0  # 动态耦合周期(设置为0取消floquet)
+center_spin_period = 1.0  # 中心自旋的动态耦合周期(设置为0取消floquet)
 
 # 周期性边界条件设置
 periodic = true  # true 表示使用周期性边界条件，false 表示使用开放边界
 
-# 运行函数得到结果
+# 运行函数得到结果，并保存到本目录文件下
 run_simulation(N, Jz, Jy, Jx, Cz, Cy, Cx, F, W, gamma, tau, ttotal, center_spin_initial_state, chain_initial_state, specified_sites, dynamic_period, center_spin_period, periodic, α)
+
+

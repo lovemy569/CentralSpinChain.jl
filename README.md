@@ -5,6 +5,8 @@
 [![Build Status](https://github.com/lovemy569/CentralSpinChain.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/lovemy569/CentralSpinChain.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/lovemy569/CentralSpinChain.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/lovemy569/CentralSpinChain.jl)
 
+The model involves a central spin of interest and a controllable spin chain environment.
+
 $$
 \begin{aligned}
 \hat{H}& =\hat{H}_S+\hat{H}_B+\hat{H}_I \\
@@ -13,3 +15,5 @@ $$
 \hat{H}_I& =\frac14\frac\gamma L\sum_{i=1}^LJ_z(t,\omega_s)\hat{\sigma}_i^z\hat{\tau}^z+J_x(t,\omega_s)\hat{\sigma}_i^x\hat{\tau}^x+J_y(t,\omega_s)\hat{\sigma}_i^y\hat{\tau}^y.
 \end{aligned}
 $$
+
+Change the relevant parameters in the source code to perform the corresponding calculations.
