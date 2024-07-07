@@ -7,13 +7,11 @@
 
 The model involves a central spin of interest and a controllable spin chain environment.
 
-$$
-\begin{aligned}
+$$\begin{aligned}
 \hat{H}& =\hat{H}_S+\hat{H}_B+\hat{H}_I \\
 \hat{H}_{S}& =\Omega\hat{\tau}^z  \\
 \hat{H}_{B}& =\sum_{i=1}^L(-F i+\alpha i^2/L^2)\hat{\sigma}_i^z+\frac{1}2\sum_{i=1}^Lh_i\hat{\sigma}_i^z+\frac14\sum_{i=1}^LJ_z(i,t,\omega_b)\hat{\sigma}_i^z\hat{\sigma}_{i+1}^z+J_x(i,t,\omega_b)\hat{\sigma}_i^x\hat{\sigma}_{i+1}^x+J_y(i,t,\omega_b)\hat{\sigma}_i^y\hat{\sigma}_{i+1}^y  \\
 \hat{H}_I& =\frac14\frac\gamma L\sum_{i=1}^LJ_z(t,\omega_s)\hat{\sigma}_i^z\hat{\tau}^z+J_x(t,\omega_s)\hat{\sigma}_i^x\hat{\tau}^x+J_y(t,\omega_s)\hat{\sigma}_i^y\hat{\tau}^y.
-\end{aligned}
-$$
+\end{aligned}$$
 
 Change the relevant parameters in the source code to perform the corresponding calculations.
