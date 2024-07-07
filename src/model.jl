@@ -20,7 +20,7 @@ function create_initial_state_function(N, center_spin_initial_state, chain_initi
 end
 
 """
-Creates a list of gates for the spin chain
+Create a list of gates for the spin chain
 
 Parameters:
 - N: Length of the spin chain
@@ -31,23 +31,25 @@ Parameters:
 - tau: Time step
 - F: Linear field coefficient
 - W: Range for the random field coefficients
+- α: Coefficient for the non-uniform field
 - specified_sites: Pairs of spin sites to be excluded from gate operations
+- periodic: Whether to use periodic boundary conditions, true for periodic, false for open boundary
 
 Returns:
 - An array of ITensor gates for the time evolution of the spin chain.
 """
-function create_spin_chain_gates(N, s, Jx, Jy, Jz, tau, F, W, specified_sites)
-    num_gates = N - length(specified_sites) + N  # Calculate total number of gates
+function create_spin_chain_gates(N, s, Jx, Jy, Jz, tau, F, W, α, specified_sites, periodic::Bool)
+    num_gates = (periodic ? N : N - 1) - length(specified_sites) + N  # Calculate total number of gates
     gates = Vector{ITensor}(undef, num_gates)  # Pre-allocate the gates array
     gate_idx = 1  # Initialize gate index
-    
-    # Precompute all periodic boundary conditions
-    next_site = [mod(j, N) + 1 for j in 1:N]
+
+    # Precompute the next site indices
+    next_site = periodic ? [mod(j, N) + 1 for j in 1:N] : [j + 1 for j in 1:N-1]
 
     # Create gate operations for spin chain coupling
-    for j in 1:N
+    for j in 1:(periodic ? N : N-1)  # For open boundary, exclude the last site
         s1 = s[j]
-        s2 = s[next_site[j]]  # Periodic boundary condition: couple with the next spin
+        s2 = s[next_site[j]]  # Next spin site
         if (j, next_site[j]) in specified_sites || (next_site[j], j) in specified_sites
             continue  # Skip specified pairs of spin sites
         end
@@ -62,51 +64,17 @@ function create_spin_chain_gates(N, s, Jx, Jy, Jz, tau, F, W, specified_sites)
 
     # Generate uniformly distributed random field
     h = rand([-W, W], N)
+    L = N  # Chain length
     for j in 1:N
-        # Linear field and random field term in the Z direction
-        fz = F * j * op("Sz", s[j]) + h[j] * op("Sz", s[j])
+        # Linear field and random field term in the Z direction, including non-uniform term
+        Wj = -F * j + α * j^2 / L^2
+        fz = Wj * op("Sz", s[j]) + h[j] * op("Sz", s[j])
         # Create time evolution operator
         gates[gate_idx] = exp(-im * tau * fz)
         gate_idx += 1  # Update gate index
     end
 
     return gates  # Return the array of gate operations
-end
-
-"""
-Add central spin coupling terms to the list of gate operations
-
-Parameters:
-- gates: Array of gate operations for the spin chain
-- N: Length of the spin chain
-- s: Spin sites in the chain
-- center_spin: Central spin site
-- gamma: Central spin coupling coefficient
-- Cx: Coupling coefficient for X direction between central spin and chain spins
-- Cy: Coupling coefficient for Y direction between central spin and chain spins
-- Cz: Coupling coefficient for Z direction between central spin and chain spins
-- tau: Time step
-
-This function iterates over each spin site in the chain, calculates the coupling term with the central spin, 
-and adds the corresponding time evolution operator to the gate operations array.
-"""
-function add_center_spin_coupling!(gates, N, s, center_spin, gamma, Cx, Cy, Cz, tau)
-    # Pre-compute constants
-    gamma_over_N = gamma / N
-
-    # Iterate over each spin site in the chain
-    for j in 1:N
-        # Calculate the coupling Hamiltonian term between the central spin and the chain spin
-        hjc = gamma_over_N * (
-            Cx * (op("Sx", s[j]) * op("Sx", center_spin)) +
-            Cy * (op("Sy", s[j]) * op("Sy", center_spin)) +
-            Cz * (op("Sz", s[j]) * op("Sz", center_spin))
-        )
-        # Create the time evolution operator
-        Gjc = exp(-im * tau * hjc)
-        # Add the time evolution operator to the gate operations array
-        push!(gates, Gjc)
-    end
 end
 
 """
@@ -123,6 +91,10 @@ Returns:
 - Returns the dynamically adjusted exchange coefficients for the X, Y, and Z directions.
 """
 function coupling_strength(t, Jx, Jy, Jz, period)
+    if period == 0
+        return Jx, Jy, Jz
+    end 
+
     half_period = period / 2  # Precompute half of the period
     in_first_half = mod(t, period) < half_period  # Check if in the first half of the period
     
@@ -147,6 +119,10 @@ Returns:
 - Returns the dynamically adjusted coupling coefficients for the X, Y, and Z directions.
 """
 function center_spin_coupling_strength(t, Cx, Cy, Cz, center_spin_period)
+    if center_spin_period == 0
+        return Cx, Cy, Cz
+    end
+
     half_period = center_spin_period / 2  # Precompute half of the period
     in_first_half = mod(t, center_spin_period) < half_period  # Check if in the first half of the period
     
@@ -194,7 +170,7 @@ function apply_dynamic_coupling(psi, s, specified_sites, t, gamma, Jx, Jy, Jz, C
     end
 
     # Handle dynamic coupling with the central spin
-    gamma_over_len_s = gamma / length(s)
+    gamma_over_len_s = gamma / (length(s) - 1)
     for j in 1:length(s) - 1
         sj = s[j]
         hjc = gamma_over_len_s * (Cx_dynamic * op("Sx", sj) * op("Sx", center_spin) +
@@ -278,7 +254,7 @@ function time_evolution(N, ttotal, tau, psi, gates, s, specified_sites, Jx, Jy, 
         push!(Sx_array, Sx)
 
         for j in 1:N
-            sz_j = expect(psi, "Sz"; sites = j)
+            sz_j = expect(complex(psi), "Sz"; sites = j)
             CSz[step_index, j] = 2 * sz_j
             CSz_array[step_index, j] = (-1) ^ (j + 1) * (sz_j + 0.5)
         end
@@ -378,18 +354,19 @@ Parameters:
 - specified_sites: Specified pairs of spin sites
 - dynamic_period: Period of the dynamic coupling
 - center_spin_period: Period of the dynamic coupling for the central spin
+- periodic: Whether to use periodic boundary conditions, true for periodic, false for open boundary
+- α: Coefficient for the non-uniform field
 
 This function initializes the spin chain, creates gate operations, performs time evolution, and plots the results.
 """
-function run_simulation(N, Jz, Jy, Jx, Cz, Cy, Cx, F, W, gamma, tau, ttotal, cutoff, center_spin_initial_state, chain_initial_state, specified_sites, dynamic_period, center_spin_period)
+function run_simulation(N, Jz, Jy, Jx, Cz, Cy, Cx, F, W, gamma, tau, ttotal, center_spin_initial_state, chain_initial_state, specified_sites, dynamic_period, center_spin_period, periodic, α)
     # Initialize spin sites
     s = siteinds("S=1/2", N + 1)
     initial_state_function = create_initial_state_function(N, center_spin_initial_state, chain_initial_state)
     psi = MPS(s, initial_state_function)
 
     # Create gate operations
-    gates = create_spin_chain_gates(N, s, Jx, Jy, Jz, tau, F, W, specified_sites)
-    add_center_spin_coupling!(gates, N, s, s[N+1], gamma, Cx, Cy, Cz, tau)
+    gates = create_spin_chain_gates(N, s, Jx, Jy, Jz, tau, F, W, α, specified_sites, periodic)
 
     # Perform time evolution
     t_array, Sz_array, Sy_array, Sx_array, Entropy_array, CSz_array, CSz = time_evolution(N, ttotal, tau, psi, gates, s, specified_sites, Jx, Jy, Jz, Cx, Cy, Cz, gamma, dynamic_period, center_spin_period)
