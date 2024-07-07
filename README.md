@@ -8,7 +8,7 @@
 The model involves a central spin of interest and a controllable spin chain environment:
 
 <div align="center">
-    <img src="./docs/model.png" alt="model" width="600"/>
+    <img src="./docs/model.png" alt="model" width="800"/>
 </div>
 
 Change the relevant parameters in the source code to perform the corresponding calculations.
