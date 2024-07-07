@@ -1,9 +1,3 @@
-using CentralSpinChain
-using HDF5
-using Plots
-using Dates
-using FileIO
-
 """
 Creates a function to define the initial state of the spin chain
 

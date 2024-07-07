@@ -1,7 +1,7 @@
 using CentralSpinChain
 
 # 参数设置
-N = 4  # 粒子数
+N = 6  # 粒子数
 Jz = 1.30  # 自旋链交换系数
 Jy = 1.03  # 自旋链交换系数
 Jx = 1.20  # 自旋链交换系数
@@ -21,14 +21,14 @@ center_spin_initial_state = "X+"  # 可选择 "Up", "Dn", "X+", "X-"
 chain_initial_state = "all_up"  # 可选择 "Néel_state", "all_up", "all_dn", "all_x+", "all_x-"
 
 # 动态耦合参数
-specified_sites = [(2, 3)]  # 指定site对,example: specified_sites = [(2, 1),(2, 3),(4, 3)]
-dynamic_period = 1.0  # 动态耦合周期(设置为0取消floquet)
+specified_sites = [(2, 3),(4, 3)]  # 指定site对,example: specified_sites = [(2, 1),(2, 3),(4, 3)]
+dynamic_period = 2.0  # 动态耦合周期(设置为0取消floquet)
 center_spin_period = 1.0  # 中心自旋的动态耦合周期(设置为0取消floquet)
 
 # 周期性边界条件设置
 periodic = true  # true 表示使用周期性边界条件，false 表示使用开放边界
 
-# 运行函数得到结果，并保存到本目录文件下
+# 运行函数得到结果，并保存到data文件中
 run_simulation(N, Jz, Jy, Jx, Cz, Cy, Cx, F, W, gamma, tau, ttotal, center_spin_initial_state, chain_initial_state, specified_sites, dynamic_period, center_spin_period, periodic, α)
 
 
