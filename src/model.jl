@@ -121,6 +121,7 @@ Returns:
 function center_spin_coupling_strength(t, Cx, Cy, Cz, center_spin_period)
     if center_spin_period == 0
         return Cx, Cy, Cz
+        # return 0,0,0
     end
 
     half_period = center_spin_period / 2  # Precompute half of the period
@@ -238,6 +239,9 @@ function time_evolution(N, ttotal, tau, psi, gates, s, specified_sites, Jx, Jy, 
     Sx_array = Float64[]
     Entropy_array = Float64[]
     t_array = Float64[]
+    zz_corr_array = Vector{Vector{Float64}}()
+    sp_corr_array = Vector{Vector{Float64}}()
+    sm_corr_array = Vector{Vector{Float64}}()
 
     num_steps = Int(ttotal / tau) + 1
     CSz_array = zeros(Float64, num_steps, N)
@@ -263,12 +267,23 @@ function time_evolution(N, ttotal, tau, psi, gates, s, specified_sites, Jx, Jy, 
         SvN = measure_EE(psi, N)
         push!(Entropy_array, SvN)
 
+        zz_corr = real(correlation_matrix(psi, "Sz", "Sz")[N+1,:])
+        sp_corr = real(correlation_matrix(psi, "S+", "S+")[N+1,:])
+        sm_corr = real(correlation_matrix(psi, "S-", "S-")[N+1,:])
+
+        push!(zz_corr_array, vec(zz_corr))
+        push!(sp_corr_array, vec(sp_corr))
+        push!(sm_corr_array, vec(sm_corr))
+
         psi = apply_dynamic_coupling(psi, s, specified_sites, t, gamma, Jx, Jy, Jz, Cx, Cy, Cz, tau, dynamic_period, center_spin_period)
         psi = apply(gates, psi; cutoff=1e-9)
         normalize!(psi)
     end
 
-    return t_array, Sz_array, Sy_array, Sx_array, Entropy_array, CSz_array, CSz
+    zz_matrix = Array(hcat(zz_corr_array...)')
+    sp_matrix = Array(hcat(sp_corr_array...)')
+    sm_matrix = Array(hcat(sm_corr_array...)')
+    return t_array, Sz_array, Sy_array, Sx_array, Entropy_array, CSz_array, CSz, zz_matrix, sp_matrix, sm_matrix
 end
 
 """
@@ -346,7 +361,7 @@ Parameters:
 - CSz: Central spin Sz values
 - parameters: Dictionary containing the simulation parameters
 """
-function save_simulation_results(folder, t_array, Sz_array, Sy_array, Sx_array, Entropy_array, CSz_array, CSz, parameters)
+function save_simulation_results(folder, t_array, Sz_array, Sy_array, Sx_array, Entropy_array, CSz_array, CSz, zz_matrix, sp_matrix, sm_matrix, parameters)
     # Create folder if it doesn't exist
     mkpath(folder)
 
@@ -360,6 +375,9 @@ function save_simulation_results(folder, t_array, Sz_array, Sy_array, Sx_array, 
         write(file, "Entropy_array", Entropy_array)
         write(file, "CSz_array", CSz_array)
         write(file, "CSz", CSz)
+        write(file, "zz_matrix", zz_matrix)
+        write(file, "sp_matrix", sp_matrix)
+        write(file, "sm_matrix", sm_matrix)
     end
 
     # Save parameters
@@ -450,7 +468,7 @@ function run_simulation(N, Jz, Jy, Jx, Cz, Cy, Cx, F, W, gamma, tau, ttotal, cen
     gates = create_spin_chain_gates(N, s, Jx, Jy, Jz, tau, F, W, α, specified_sites, periodic)
 
     # Perform time evolution
-    t_array, Sz_array, Sy_array, Sx_array, Entropy_array, CSz_array, CSz = time_evolution(N, ttotal, tau, psi, gates, s, specified_sites, Jx, Jy, Jz, Cx, Cy, Cz, gamma, dynamic_period, center_spin_period)
+    t_array, Sz_array, Sy_array, Sx_array, Entropy_array, CSz_array, CSz, zz_matrix, sp_matrix, sm_matrix = time_evolution(N, ttotal, tau, psi, gates, s, specified_sites, Jx, Jy, Jz, Cx, Cy, Cz, gamma, dynamic_period, center_spin_period)
 
     # Plot results
     create_plots(t_array, Sz_array, Sy_array, Sx_array, CSz_array, CSz, Entropy_array)
@@ -484,6 +502,6 @@ function run_simulation(N, Jz, Jy, Jx, Cz, Cy, Cx, F, W, gamma, tau, ttotal, cen
     mkpath(folder)
 
     # Save simulation results
-    save_simulation_results(folder, t_array, Sz_array, Sy_array, Sx_array, Entropy_array, CSz_array, CSz, parameters)
+    save_simulation_results(folder, t_array, Sz_array, Sy_array, Sx_array, Entropy_array, CSz_array, CSz, zz_matrix, sp_matrix, sm_matrix, parameters)
 end
 
